@@ -1,14 +1,15 @@
 ### Nível de desenvolvimento do país de origem e qualificação dos migrantes no Brasil ###
 
 # 0. Pacotes necessários:
-library(readxl) #Para tratamento dos dados.
-library(dplyr) #Para tratamento dos dados.
-library(tidyr) #Para tratamento dos dados.
-library(performance) #biblioteca que vamos usar para calcular o ICC.
-library(lme4) #biblioteca que vamos calcular o logit multinível e o modelo nulo.
+library(readxl) # Para tratamento dos dados.
+library(dplyr) # Para tratamento dos dados.
+library(tidyr) # Para tratamento dos dados.
+library(performance) # biblioteca que vamos usar para calcular o ICC.
+library(lme4) # biblioteca que vamos calcular o logit multinível e o modelo nulo.
+library(modelsummary) # Para criar as tabelas
+library(marginaleffects) # Para calcular os efeitos marginais
 
-
-# 1. Importando e Tratando o Banco de dados:
+### 1. Importando e Tratando o Banco de dados:
 
 dados <- read.csv2("dados/RAIS_CTPS_CAGED_2019.csv")
 View(dados)
@@ -27,7 +28,7 @@ dados <- dados %>%
          salario_mensal,
          cbo_2002)
 
-# 1.1 Transformando as variáveis "pais" e "status_migratório" para formato númerico:
+### 1.1. Transformando as variáveis "pais" e "status_migratório" para formato númerico:
 
 # Convertendo país em variável categórica
 dados$pais <- factor(dados$pais)
@@ -37,7 +38,7 @@ dados <- dados %>% filter(status_migratorio == "Permanente", #  Considerando na 
                           tipo_mov_desagregado == 1 # Considerando somente admissão por primeiro emprego, ou seja, migrantes que ingressam no Brasil em 2019. Esse filtro se justifica, pois é interessante levar em consideração o processo migratório mais atual, assim como as condições mais recentes do mercado de trabalho.  No caso do diferencial de desenvolvimento, isso faz muita diferença, pois se considerarmos todos os migrantes existem migrantes de países que o status de desenvolvimento em relação ao Brasil, mensurado pelo IDH, sofreu modificações importantes nos últimos anos.
 )
 
-# Construindo a variável de qualificação do migrante
+### 1.2. Construindo a variável de qualificação do migrante
 # 1 = ensino superior completo
 # 0 = demais categorias inferiores a 6
 
@@ -50,8 +51,7 @@ dados$qualificado <- ifelse(
 
 table(dados$qualificado, useNA = "ifany")
 
-# Considerando a população economicamente ativa
-# Excluindo as faixas etárias 1 e 7
+### 1.3. Considerando a população economicamente ativa (Excluindo as faixas etárias 1 e 7)
 
 table(dados$faixa_etaria, useNA = "ifany")
 
@@ -61,7 +61,7 @@ dados <- dados %>%
 table(dados$faixa_etaria, useNA = "ifany")
 
 
-# Criando dummies para as faixas etárias
+### 1.4. Criando dummies para as faixas etárias
 # Categoria de referência: idade_1 (18 a 24 anos)/idade_2 (25 a 29 anos)/idade_3 (30 a 39 anos)/idade_4 (40 a 49 anos)/idade_5 (50 a 64 anos)
 
 dados$idade_1 <- ifelse(dados$faixa_etaria == 2, 1,
@@ -85,8 +85,7 @@ table(dados$idade_3, useNA = "ifany")
 table(dados$idade_4, useNA = "ifany")
 table(dados$idade_5, useNA = "ifany")
 
-# Gerando dummy de sexo
-# homem = 1 para homens; 0 para mulheres
+### 1.5. Gerando dummy de sexo (homem = 1 para homens; 0 para mulheres)
 
 table(dados$sexo, useNA = "ifany")
 
@@ -96,7 +95,7 @@ dados$homem <- ifelse(dados$sexo == 1, 1,
 table(dados$homem, useNA = "ifany")
 
 
-# Gerando dummy de cor/raça
+###  1.6. Gerando dummy de cor/raça
 # branco = 1 para brancos e amarelos
 # branco = 0 para pretos, pardos e indígenas
 # Excluindo categoria 9
@@ -111,9 +110,7 @@ dados$branco <- ifelse(dados$raca_cor %in% c(2, 6), 1,
 
 table(dados$branco, useNA = "ifany")
 
-
-# Criando dummies regionais
-# Códigos de UF do IBGE
+### 1.7. Criando dummies regionais (Códigos de UF do IBGE)
 
 table(dados$uf, useNA = "ifany")
 
@@ -138,8 +135,7 @@ table(dados$sudeste, useNA = "ifany")
 table(dados$sul, useNA = "ifany")
 table(dados$centroeste, useNA = "ifany")
 
-
-# Criando dummy para horas contratadas
+### 1.8. Criando dummy para horas contratadas
 # 1 = categoria 6 (mais de 40 horas, conforme sua definição)
 # 0 = categorias inferiores a 6
 
@@ -152,7 +148,7 @@ dados$horamais40 <- ifelse(
 
 table(dados$horamais40, useNA = "ifany")
 
-# Criando grupos ocupacionais a partir da CBO 2002
+### 1.9. Criando grupos ocupacionais a partir da CBO 2002
 
 # Grupo 1: Membros superiores do poder público, dirigentes e gerentes
 dados$grupo1 <- ifelse(
@@ -210,9 +206,9 @@ dados$grupo8 <- ifelse(
 )
 table(dados$grupo8, useNA = "ifany")
 
+### 1.10. Criando a tabela de IDH e calculando a difIDH com o Brasil no ano de 2019.
 
-
-# Tabela de IDH dos países de origem em 2019
+# Tabela de IDH dos paises de origem em 2019
 IDH_paises <- data.frame(
   pais = c(
     "ALEMANHA", "ANGOLA", "ARGENTINA", "ARGELIA", "ARMENIA",
@@ -253,18 +249,16 @@ IDH_paises <- data.frame(
   )
 )
 
-# Garantindo que o nome do país esteja como texto
-# e removendo espaços extras
+# Garantindo que o nome do pais esteja como texto e removendo espacos extras
 dados$pais <- trimws(as.character(dados$pais))
 
-# Associando o IDH de cada país ao banco de dados
+# Associando o IDH de cada pais ao banco de dados
 dados$IDH <- IDH_paises$IDH[
   match(dados$pais, IDH_paises$pais)
 ]
 
-# Criando a diferença entre o IDH do país de origem
-# e o IDH do Brasil em 2019
-dados$difIDH <- dados$IDH - 0.765
+# Criando a diferenca entre o IDH do pais de origem e o IDH do Brasil em 2019
+dados$difIDH <- dados$IDH - 0.765 # IDH do Brasil em 2019: 0.765
 
 # Conferindo os resultados
 table(is.na(dados$IDH))
@@ -282,10 +276,8 @@ dados %>%
   arrange(pais) %>%
   View()
 
-# Analise Descritiva
-
-
-### ORIGEM DOS IMIGRANTES INSERIDOS NO MERCADO DE TRABALHO FORMAL BRASILEIRO NO ANO DE 2019
+### 2. Fazendo as analises descritivas e criando tabelas de cada uma.
+### 2.1. Origem dos imigrantes inseridos no mercado de trabalho formal brasileiro em 2019.
 
 dados %>%
   count(pais, sort = TRUE) %>%
@@ -306,7 +298,7 @@ dados %>%
     notes = "Fonte: Elaboração própria com base nos dados harmonizados do RAIS-CTPS-CAGEG.") %>%
   tinytable::style_tt(align = "c")  # Serve para centralizar todas as informacoes
 
-### ESTATISTICAS DESCRITIVAS DA AMOSTRA
+### 2.2. Estatisticas descritivas da amostra.
 
 Obs <- function(x) as.character(sum(!is.na(x)))
 
@@ -320,8 +312,7 @@ datasummary(
   notes = "Fonte: Elaboração própria com base nos dados harmonizados do RAIS-CTPS-CAGEG.") %>%
   tinytable::style_tt(align = "c")  # Serve para centralizar todas as informacoes
 
-
-#### TABELA COM O NIVEL DE INSTRUCAO POR PAIS.
+### 2.3. Tabela com o nivel de instrucao por pais.
 
 top10 <- dados %>%
   filter(nivel_instrucao == 6) %>%
@@ -350,7 +341,7 @@ dados %>%
   tinytable::style_tt(j = 7, bold = TRUE) %>%
   tinytable::style_tt(align = "c")  # Serve para centralizar todas as informacoes
 
-### QUALIFICACAO DOS MIGRANTES (PERCENTUAL NA AMOSTRA).
+### 2.4. Qualificacao dos migrantes (percentual na amostra).
 
 dados %>%
   count(qualificado) %>%
@@ -374,7 +365,7 @@ dados %>%
   tinytable::style_tt(i = 3, bold = TRUE)%>%
   tinytable::style_tt(align = "c")  # Serve para centralizar todas as informacoes
 
-### QUALIFICACAO DOS MIGRANTES (QNTD POR PAIS)
+### 2.5. Qualificacao dos migrantes (Qntd por pais).
 
 dados %>%
   with(addmargins(table(pais, qualificado), margin = c(1, 2))) %>%  # linha e coluna de total
@@ -390,7 +381,7 @@ dados %>%
   tinytable::group_tt(j = list("Qualificado" = 2:3))%>%
   tinytable::style_tt(align = "c")
 
-### Criando uma funcao para relacionar as variaveis com a variavel de qualificacao.
+### 2.6. Criando uma funcao para relacionar as variaveis com a variavel de qualificacao e criar a tabela (iria ser uma tarefa repetitiva demais)
 
 tab_qualificado <- function(v, titulo = NULL, fonte = NULL) {
   
@@ -413,7 +404,7 @@ tab_qualificado <- function(v, titulo = NULL, fonte = NULL) {
     tinytable::style_tt(align = "c")
 }
 
-# Qualificacao do migrante por grupo ocupacional/idade/regiao/cor/genero/horas trabalhadas;
+### 2.6.1. Qualificacao do migrante por grupo ocupacional/idade/regiao/cor/genero/horas trabalhadas.
 
 tab_qualificado("grupo1")
 tab_qualificado("grupo2")
@@ -440,7 +431,9 @@ tab_qualificado("branco")
 tab_qualificado("homem")
 tab_qualificado("horamais40")
 
-# Variáveis explicativas (Nome para a tabela = Nome nos dados)
+### 2.7. Criando uma tabela que relaciona a variavel dependendente, qualificacao, com as demais variaveis.
+### 2.7.1. Definindo as Variaveis explicativas que vou relacionar (Nome para a tabela = Nome nos dados)
+
 variaveis <- c("Ciências_Artes" = "grupo2",
           "Idade 1" = "idade_1", "Idade 2" = "idade_2", "Idade 3" = "idade_3",
           "Idade 4" = "idade_4", "Idade 5" = "idade_5",
@@ -448,7 +441,8 @@ variaveis <- c("Ciências_Artes" = "grupo2",
           "Sul" = "sul", "Centroeste" = "centroeste",
           "Branco" = "branco", "Homem" = "homem", "Horamais40" = "horamais40")
 
-# Calcula, para cada variável, total (x = 1), qualificados (x = 1 e qualificado = 1) e a razão
+### 2.7.2.  Calculando, para cada variavel, total (x = 1), qualificados (x = 1 e qualificado = 1) e a razao.
+
 resumo <- bind_rows(lapply(names(variaveis), function(rotulo) {
   x <- dados[[ variaveis[[rotulo]] ]]
   q <- dados$qualificado
@@ -462,7 +456,8 @@ resumo <- bind_rows(lapply(names(variaveis), function(rotulo) {
   )
 }))
 
-# Tabela formatada
+# 2.7.3 Formatando a tabela dessas informacoes.
+
 tabela_variaveisxqualificados <- resumo %>%
   mutate(Total = format(Total, big.mark = ",", trim = TRUE),
          Qualificados = format(Qualificados, big.mark = ",", trim = TRUE),
@@ -479,16 +474,20 @@ tabela_variaveisxqualificados <- resumo %>%
 
 tabela_variaveisxqualificados
 
-### Modelo estimado e o Logit Multinivel, que considera dois niveis: 1 (variaveis relativas a 
-### caracteristicas do migrante e de seu posto de trabalho) e 2 (país de origem do migrante).
+### 3. Analise econometrica.
+# Modelo estimado sera o Logit Multinivel, que considera dois niveis: 1 (variaveis relativas a 
+# caracteristicas do migrante e de seu posto de trabalho) e 2 (país de origem do migrante).
 
 # Primeiro, precisamos estimar o modelo nulo (sem controles) para verificar a adequacao do metodo e estimar a correlacao intraclasse.
 
-# Modelo nulo: só intercepto + efeito aleatório de país
+### 3.1. Modelo nulo: só intercepto + efeito aleatório de país.
+
 modelo_nulo <- glmer(qualificado ~ 1 + (1 | pais),
             data    = dados,
             family  = binomial(link = "logit"),
             nAGQ    = 10)          # quadratura adaptativa: mais precisa que o padrão (Laplace)
+
+### 3.2. Calculando o ICC (coeficiente de correlacao intraclasse).
 
 performance::icc(modelo_nulo)
 
@@ -498,3 +497,26 @@ performance::icc(modelo_nulo)
 # ICC: Coeficiente de correlacao Intraclasse: 0.407 (40,7% das variacoes nas chances do imigrante ser qualificado
 # sao influenciadas pelo pais de origem do imigrante, o que nos permite inferir que o pais do qual o imigrante adveio
 # pode influenciar em sua formacao, ou seja, ha uma caracteristica referente ao pais, o que indica utilizar o modelo multinivel)
+
+### 3.3. Modelo completo.
+
+modelo_completo <- glmer(qualificado ~ homem + branco + idade_2 + idade_3 + idade_4 + idade_5 +
+              horamais40 + norte + nordeste + centroeste + sul + grupo2 + difIDH +
+              (1 | pais),
+            data    = dados,
+            family  = binomial,
+            nAGQ    = 10,
+            control = glmerControl(optimizer = "bobyqa"))
+
+### 3.4. Calculando os efeitos marginais do modelo completo.
+
+efeitos_marginais <- avg_slopes(modelo_completo)
+summary(efeitos_marginais)
+
+### 3.5. Fazendo a Tabela 
+
+modelsummary(list("Modelo nulo" = modelo_nulo, "Modelo completo" = modelo_completo, "Efeitos Marginais" = efeitos_marginais),
+             stars = TRUE,
+             title = "Resultados Econométricos e efeito marginal do Modelo Completo")
+
+################################################################################
