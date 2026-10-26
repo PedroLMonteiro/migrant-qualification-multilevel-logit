@@ -13,7 +13,7 @@ brasileiro em 2019 ter ensino superior completo. A análise estima um **logit mu
 
 ## Dados
 
-- **Fonte:** dados harmonizados RAIS-CTPS-CAGED, 2019. Podem ser encontrados em: https://www.gov.br/mj/pt-br/assuntos/seus-direitos/migracoes/portal-de-imigracao-laboral/obmigra-1/microdados
+- **Fonte:** dados harmonizados RAIS-CTPS-CAGED, 2019. Podem ser encontrados em: [Portal de microdados do OBMigra](https://www.gov.br/mj/pt-br/assuntos/seus-direitos/migracoes/portal-de-imigracao-laboral/obmigra-1/microdados).
 - Os dados utilizados neste trabalho estão em [`RAIS_CTPS_CAGED_2019`](dados/), junto do layout da base.
 
 ## Metodologia
